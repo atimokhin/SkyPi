@@ -1,0 +1,17 @@
+
+* tightVNC
+
+** install http://www.tightvnc.com/
+
+** autostart
+
+* gpsd
+
+* http://www.satsignal.eu/ntp/Raspberry-Pi-NTP.html
+
+* http://vanheusden.com/time/rpi_gpio_ntp/
+
+
+* python-netifaces
+  http://alastairs-place.net/projects/netifaces/
+  https://pypi.python.org/pypi/netifaces
