@@ -18,6 +18,8 @@ while True:
             print 'mode=%d' % report.mode
             print 'time=%s' % report.time
             print 'latitude=%g longitude=%g' % (report.lat,report.lon)
+            print 'lat:', report.lat
+            print 'lon:', report.lon
             
             utc = datetime.strptime(report.time, "%Y-%m-%dT%H:%M:%S.000Z")
             utc = utc.replace(tzinfo=tzutc())
