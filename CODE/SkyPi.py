@@ -29,7 +29,7 @@ class SkyPi:
         self.time_str_fmt = ' %m/%d %H:%M'
         self.datetime_str=datetime.now().strftime(self.time_str_fmt)
         # gps mode - check no often than every 5 sec
-        self.gps = SkyPi_GPS(5)
+        self.gps = SkyPi_GPS(4)
         # IP
         self.interface,self.address = first_ip()
         # setup GPIO
@@ -58,7 +58,7 @@ class SkyPi:
         """
         show GPS status
         """ 
-        if ( self.gps.has_gps_mode_changed() or self.redraw_flag ):
+        if ( self.gps.check_gps() or self.redraw_flag ):
             # show GPS info on LCD
             self.lcd.setCursor(0,0)
             self.lcd.message(self.gps.gps_status_str())
@@ -96,6 +96,14 @@ class SkyPi:
         self.lcd.clear()
         self.lcd.setCursor(0,0)
         self.lcd.message('Button pressed\n')
+        sleep(1)
+        self.lcd.clear()
+        self.lcd.setCursor(0,0)
+        lat,lon,status = self.gps.get_location()
+        self.lcd.message('S:%2d lat:%g' % (status,lat))
+        self.lcd.setCursor(0,1)
+        self.lcd.message('    lon:%g' % lon)
         self.redraw_flag = True
         sleep(2)
+        self.lcd.clear()
         
