@@ -8,5 +8,5 @@ class SkyPi_FSM:
         self.active_state = fun
 
     def update(self):
-        if self.active_state in son None:
+        if self.active_state is not None:
             self.active_state()

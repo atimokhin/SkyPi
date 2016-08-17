@@ -3,10 +3,15 @@ import time
 import gps
 
 class SkyPi_GPS:
+    """
+    Class implementing SkyPi GPS functionality:
+    - communicate with GPS module
+    - take care of location: saving/reading file with location
+    """
 
-    loc_file_current = '/var/run/SkyPi_GPS_loc.current'
-    loc_file         = '/home/pi/SkyPi/GPS.loc'
-    loc_file_2       = '/home/pi/SkyPi/GPS.loc_2'
+    LOC_FILE_current = '/var/run/SkyPi_GPS_loc.current'
+    LOC_FILE         = '/home/pi/SkyPi/GPS.loc'
+    LOC_FILE_2       = '/home/pi/SkyPi/GPS.loc_2'
     
     def __init__(self, dt_check=5):
         """
@@ -15,8 +20,8 @@ class SkyPi_GPS:
         if dt_check < 0:
             raise Exception("dt_check musy be positive!")
         # remove location file lock
-        if os.path.exists(SkyPi_GPS.loc_file_current):
-            os.unlink(SkyPi_GPS.loc_file_current)
+        if os.path.exists(SkyPi_GPS.LOC_FILE_current):
+            os.unlink(SkyPi_GPS.LOC_FILE_current)
         # initialize variables
         self.dt_check = dt_check
         self.t_last_check = time.time()
@@ -27,9 +32,8 @@ class SkyPi_GPS:
         Remove lock file when stopping the service
         """
         # remove location file lock
-        if os.path.exists(SkyPi_GPS.loc_file_current):
-            os.unlink(SkyPi_GPS.loc_file_current)
-        
+        if os.path.exists(SkyPi_GPS.LOC_FILE_current):
+            os.unlink(SkyPi_GPS.LOC_FILE_current)
         
     def check_gps(self):
         """
@@ -37,7 +41,7 @@ class SkyPi_GPS:
         - get GPS data
         - save mode, lat, lon in internal variables
         - writes location in to file, if necessary
-
+        ----------------
         Returns True of GPS mode has changed, False otherwise
         """
         mode_changed=False
@@ -58,45 +62,45 @@ class SkyPi_GPS:
 
     def save_location(self):
         """
-        Save correct GPS location into file SkyPi_GPS.loc_file
+        Save correct GPS location into file SkyPi_GPS.LOC_FILE
         """
-        if self.gps_mode > 1 and not os.path.exists(SkyPi_GPS.loc_file_current):
+        if self.gps_mode > 1 and not os.path.exists(SkyPi_GPS.LOC_FILE_current):
             # mode 3 - accurate location -----
             if self.gps_mode == 3:
                 # remove mode=2 file with less accurate coordinates
-                if os.path.exists(SkyPi_GPS.loc_file_2):
-                    os.unlink(SkyPi_GPS.loc_file_2)
+                if os.path.exists(SkyPi_GPS.LOC_FILE_2):
+                    os.unlink(SkyPi_GPS.LOC_FILE_2)
                 # save mode=3 location
-                self._save_lat_lon_to_file(SkyPi_GPS.loc_file)
+                self._save_lat_lon_to_file(SkyPi_GPS.LOC_FILE)
                 # create lock file
-                os.mknod(SkyPi_GPS.loc_file_current)
+                os.mknod(SkyPi_GPS.LOC_FILE_current)
             # mode 2 - preliminary location
             elif self.gps_mode == 2:
-                self._save_lat_lon_to_file(SkyPi_GPS.loc_file_2)
+                self._save_lat_lon_to_file(SkyPi_GPS.LOC_FILE_2)
 
     def get_location(self):
         """
-        retrives location saved in SkyPi_GPS.loc_file
+        retrives location saved in SkyPi_GPS.LOC_FILE
         providing its status: 
         3 - fresh GPS-3 location 
         2 - fresh GPS-2 location
         30 - old GPS-3 location
         0  - no saved location available
         -1 - Error
-
+        --------------
         returns (lat,lon, status)
         """
-        if os.path.exists(SkyPi_GPS.loc_file_current):
-            if os.path.exists(SkyPi_GPS.loc_file):
-                filename = SkyPi_GPS.loc_file
+        if os.path.exists(SkyPi_GPS.LOC_FILE_current):
+            if os.path.exists(SkyPi_GPS.LOC_FILE):
+                filename = SkyPi_GPS.LOC_FILE
                 status = 3
             else:
                 status = -1
-        elif os.path.exists(SkyPi_GPS.loc_file_2):
-            filename = SkyPi_GPS.loc_file_2
+        elif os.path.exists(SkyPi_GPS.LOC_FILE_2):
+            filename = SkyPi_GPS.LOC_FILE_2
             status = 2
-        elif os.path.exists(SkyPi_GPS.loc_file):
-            filename = SkyPi_GPS.loc_file
+        elif os.path.exists(SkyPi_GPS.LOC_FILE):
+            filename = SkyPi_GPS.LOC_FILE
             status = 30
         else:
             status = 0
@@ -171,5 +175,5 @@ class SkyPi_GPS:
 
 
 if __name__ == "__main__" :
-    print "gps mode: %i" % SkyPi_GPS().gps_mode
+    print "gps status: %s" % SkyPi_GPS().gps_status_str()
 

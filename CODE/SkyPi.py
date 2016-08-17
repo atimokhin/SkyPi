@@ -3,22 +3,25 @@ from subprocess import *
 from time import sleep, strftime
 from datetime import datetime
 
-from ip_address import  first_ip
-
 import sys
 import time  # this is only being used as part of the example
-
-#from gps_mode import gps_mode
 
 import RPi.GPIO as GPIO
 
 from SkyPi_GPS import SkyPi_GPS
+from SkyPi_NET import SkyPi_NET
+from SkyPi_FSM import SkyPi_FSM
+from SkyPi_CONFIG import SkyPi_CONFIG as SP_CFG
+
 
 
 class SkyPi:
 
     def __init__(self):
+        self.FSM = SkyPi_FSM()
+        # flags
         self.redraw_flag = True
+        self.wifi_mode_adhoc_flag = False
         # setup LCD screen
         self.lcd = Adafruit_CharLCD()
         self.lcd.begin(16, 2)
@@ -28,31 +31,60 @@ class SkyPi:
         self.time_state = True
         self.time_str_fmt = ' %m/%d %H:%M'
         self.datetime_str=datetime.now().strftime(self.time_str_fmt)
-        # gps mode - check no often than every 5 sec
-        self.gps = SkyPi_GPS(4)
-        # IP
-        self.interface,self.address = first_ip()
-        # setup GPIO
+        # gps
+        self.gps = SkyPi_GPS(SP_CFG.DT_GPS_CHECK)
+        # net
+        self.net = SkyPi_NET()
+        # setup GPIOs
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(SP_CFG.PIN_BUTTON_HC_SETUP,   GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(SP_CFG.PIN_SWITCH_ADHOC_MODE, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 
-    def Task__GPS_IP(self):
+    def Show_GPS_IP(self):
         # gps status
         self._show_gps_status()
         # time
         self._show_time()
         # ip
-        self._check_ip()
+        self._show_ip()
         # reset redraw_flag
         self.redraw_flag = False
         # monitor button
-        self._check_button()
+        self.check_buttons()
+
+    def Change_WiFi_Mode(self,mode):
+        if mode == 'A':
+            self.net.switch_to_AdHoc()
+        elif mode == 'M':
+            self.net.switch_to_Managed()
+            
+    def Setup_HC(self):
+        self.lcd.clear()
+        self.lcd.setCursor(0,0)
+        self.lcd.message('Button pressed\n')
+        sleep(1)
+        self.lcd.clear()
+        self.lcd.setCursor(0,0)
+        lat,lon,status = self.gps.get_location()
+        self.lcd.message('S:%2d lat:%g' % (status,lat))
+        self.lcd.setCursor(0,1)
+        self.lcd.message('    lon:%g' % lon)
+        self.redraw_flag = True
+        sleep(2)
+        self.lcd.clear()
         
-    def _check_button(self):
-        input_state = GPIO.input(4)
-        if input_state == False:
-            self._set_HC()
+    def check_buttons(self):
+        if GPIO.input(SP_CFG.PIN_BUTTON_HC_SETUP) == False:
+            self.Setup_HC()
+        if GPIO.input(SP_CFG.PIN_SWITCH_ADHOC_MODE) == False:
+            if not self.wifi_mode_adhoc_flag:
+                self.Change_WiFi_Mode('A')
+                self.wifi_mode_adhoc_flag = True
+        else:
+            if self.wifi_mode_adhoc_flag:
+                self.Change_WiFi_Mode('M')
+                self.wifi_mode_adhoc_flag = False
         
     def _show_gps_status(self):
         """
@@ -63,19 +95,16 @@ class SkyPi:
             self.lcd.setCursor(0,0)
             self.lcd.message(self.gps.gps_status_str())
                 
-    def _check_ip(self):
+    def _show_ip(self):
         local_redraw_flag = False
-        interface_new,address_new = first_ip()
         # if address has changed
-        if ( self.address   != address_new   or
-             self.interface != interface_new ):
-             local_redraw_flag = True
-             self.interface = interface_new 
-             self.address   = address_new
-        # show IP info on LCD
-        if ( local_redraw_flag or self.redraw_flag ):                     
+        if ( self.net.check_net() or self.redraw_flag ):                     
+             # clear previous IP
              self.lcd.setCursor(0,1)
-             self.lcd.message('%s%s' % (self.interface[0],self.address) )
+             self.lcd.message(16*' ')
+             # new IP
+             self.lcd.setCursor(0,1)
+             self.lcd.message(self.net.net_status_str())
 
     def _show_time(self):
         current_datetime_str=datetime.now().strftime(self.time_str_fmt)
@@ -91,19 +120,5 @@ class SkyPi:
             self.lcd.message(':')
         else:
             self.lcd.message(' ')
-             
-    def _set_HC(self):
-        self.lcd.clear()
-        self.lcd.setCursor(0,0)
-        self.lcd.message('Button pressed\n')
-        sleep(1)
-        self.lcd.clear()
-        self.lcd.setCursor(0,0)
-        lat,lon,status = self.gps.get_location()
-        self.lcd.message('S:%2d lat:%g' % (status,lat))
-        self.lcd.setCursor(0,1)
-        self.lcd.message('    lon:%g' % lon)
-        self.redraw_flag = True
-        sleep(2)
-        self.lcd.clear()
+
         
